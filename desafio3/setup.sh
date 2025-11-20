@@ -1,23 +1,9 @@
-## 🤖 Desafio 3 - Serviço de Monitoramento Automatizado (Bash + Systemd)
-
-Este desafio implementa um serviço no Linux que monitora um diretório (`inbox`) e move arquivos instantaneamente para um diretório de destino (`processed`). A solução utiliza o `inotify-tools` para monitoramento baseado em eventos (instantaneidade) e o `systemd` para garantir que o serviço inicie automaticamente após o boot.
-
-O provisionamento completo é realizado por um único script de automação (`setup.sh`).
-
-### 🛠️ O Script de Automação (`setup.sh`)
-
-Este script é responsável por instalar o `inotify-tools`, criar os diretórios, escrever o script de monitoramento e configurar/ativar o serviço `systemd`.
-
-Foi utilizado `getent passwd $SUDO_USER` para obter o caminho absoluto correto do diretório `home` do usuário, prevenindo erros de barra dupla (`/home//user/`). O serviço `systemd` também é configurado para rodar sob o `User=$SUDO_USER` para evitar problemas de permissão.
-
-```bash
 #!/bin/bash
 # Script Mestre: Instala, configura e ativa o serviço de monitoramento.
 
-# --- VARIÁVEIS DE CONFIGURAÇÃO ---
+# --- VARIÁVEIS DE CONFIGURAÇÃO CORRIGIDAS ---
 # Obtém o nome do usuário que invocou o script com 'sudo'
 USER_NAME=$SUDO_USER 
-# Busca o caminho ABSOLUTO e correto do diretório home do usuário
 HOME_DIR=$(getent passwd "$USER_NAME" | cut -d: -f6)
 
 WATCHER_SCRIPT="$HOME_DIR/desafiong/desafio3/script.sh"
@@ -100,6 +86,7 @@ After=network.target
 Type=simple
 ExecStart=$WATCHER_SCRIPT
 Restart=always
+# CRÍTICO: Roda o serviço com o seu usuário, o proprietário das pastas.
 User=$USER_NAME 
 StandardOutput=journal
 StandardError=journal
@@ -112,6 +99,7 @@ EOF
 # 6. Ativar e Iniciar o Serviço
 activate_service() {
     echo "5. Ativando e iniciando o serviço..."
+    # Os comandos do systemctl devem ser executados pelo root (sudo)
     systemctl daemon-reload
     systemctl enable file-watcher.service
     systemctl start file-watcher.service
@@ -128,12 +116,3 @@ create_dirs
 create_watcher_script
 create_service_file
 activate_service
-```
-### ▶️ Como Rodar o Script de Automação
-**Salve** o código acima como `setup.sh`.
-
-**Torne-o executável:** `chmod +x setup.sh`
-
-**Execute-o:** `sudo ./setup.sh`
-
-O script fará o resto, e o serviço estará ativo e configurado para reiniciar com o sistema.
